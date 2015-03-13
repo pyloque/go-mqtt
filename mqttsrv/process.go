@@ -27,7 +27,7 @@ func (room *Room) Kick() {
 }
 
 func (room *Room) Handle(clientId string, conn net.Conn, message codec.Message) {
-	log.Println(clientId, message)
+	log.Println(clientId, message.Hdr, message.Body)
 	if message.Hdr.Type == codec.TypeDisconnect {
 		conn.Close()
 	}

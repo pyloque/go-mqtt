@@ -3,17 +3,20 @@ package main
 import (
 	"log"
 	"net"
+	"sync"
+	"time"
 
 	"github.com/pyloque/mqtt/codec"
 )
 
-func StartByIndex(protocol string, addr string, index int) {
+func StartByIndex(protocol string, addr string, index int, wg *sync.WaitGroup) {
 	conn, err := net.Dial(protocol, addr)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Printf("Client %d Started\n", index)
-	go func(conn net.Conn) {
+	wg.Add(1)
+	go func(conn net.Conn, index int) {
 		mqtt := codec.NewMQTTWriter(conn)
 		{
 			body := codec.Connect{
@@ -46,19 +49,24 @@ func StartByIndex(protocol string, addr string, index int) {
 		}
 		{
 			body := codec.Disconnect{
-				Hdr: &codec.Header{Type: codec.TypeConnect, Qos: codec.Qos1},
+				Hdr: &codec.Header{Type: codec.TypeDisconnect, Qos: codec.Qos1},
 			}
 			message := codec.Message{body.Hdr, &body}
 			mqtt.Write(message)
 		}
+		time.Sleep(1000 * time.Second)
 		conn.Close()
-	}(conn)
+		wg.Done()
+		log.Printf("Client %d Ends", index)
+	}(conn, index)
 }
 
 func Start(protocol string, addr string) {
-	for i := 0; i < 10; i++ {
-		StartByIndex(protocol, addr, i)
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 100000; i++ {
+		StartByIndex(protocol, addr, i, wg)
 	}
+	wg.Wait()
 }
 
 func main() {
