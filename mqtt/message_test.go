@@ -7,32 +7,34 @@ import (
 )
 
 func testNormal(
-	t *testing.T, message Message, hdr *Header,
-	testcb func(message Message, hdr *Header, rmessage Message, rhdr *Header)) {
+	t *testing.T, message Message,
+	testcb func(body MessageBody, rbody MessageBody)) {
 	buffer := bytes.NewBuffer(make([]byte, 0))
 	mqtt_w := NewMQTTWriter(buffer)
-	mqtt_w.Write(message, hdr)
+	mqtt_w.Write(message)
 	mqtt_r := NewMQTTReader(buffer)
-	mqtt_r.ReadLoop(func(rhdr *Header, rmessage Message, err error) bool {
+	hdr, body := message.hdr, message.body
+	mqtt_r.ReadLoop(func(rmessage Message, err error) bool {
 		if err != nil {
 			t.Error(err.Error())
 			return true
 		}
+		rhdr, rbody := rmessage.hdr, rmessage.body
 		if hdr.Type != rhdr.Type || hdr.Qos != rhdr.Qos || hdr.Dup != rhdr.Dup {
 			t.Error("Header mismatch")
 			return true
 		}
-		testcb(message, hdr, rmessage, rhdr)
+		testcb(body, rbody)
 		return true
 	})
 }
 
 func TestPack(t *testing.T) {
-	generalcb := func(message Message, hdr *Header, rmessage Message, rhdr *Header) {
-		it := reflect.TypeOf(message).Elem()
-		rt := reflect.TypeOf(rmessage).Elem()
-		v := reflect.ValueOf(message).Elem()
-		rv := reflect.ValueOf(rmessage).Elem()
+	generalcb := func(body MessageBody, rbody MessageBody) {
+		it := reflect.TypeOf(body).Elem()
+		rt := reflect.TypeOf(body).Elem()
+		v := reflect.ValueOf(body).Elem()
+		rv := reflect.ValueOf(body).Elem()
 		if it != rt {
 			t.Error("type mismatch")
 			return
@@ -50,7 +52,7 @@ func TestPack(t *testing.T) {
 		}
 	}
 	{
-		message := Connect{
+		body := Connect{
 			hdr:             &Header{Type: TypeConnect, Qos: Qos1},
 			ProtocolName:    "MQIsdp",
 			ProtocolVersion: 3,
@@ -66,81 +68,81 @@ func TestPack(t *testing.T) {
 			WillMessage:     "testmessage",
 			Username:        "testuser",
 			Password:        "testpassword"}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := ConnAck{&Header{Type: TypeConnAck, Qos: Qos1}, ProtocolError}
-		testNormal(t, &message, message.hdr, generalcb)
+		body := ConnAck{&Header{Type: TypeConnAck, Qos: Qos1}, ProtocolError}
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := Publish{
+		body := Publish{
 			hdr:       &Header{Type: TypePublish, Qos: Qos1},
 			MessageId: 12345,
 			TopicName: "testtopic",
 			Content:   "abcdefghijklmnopqrstuvwxyz"}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := PubAck{
+		body := PubAck{
 			hdr:       &Header{Type: TypePubAck, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := PubRec{
+		body := PubRec{
 			hdr:       &Header{Type: TypePubRec, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := PubRel{
+		body := PubRel{
 			hdr:       &Header{Type: TypePubRel, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := PubComp{
+		body := PubComp{
 			hdr:       &Header{Type: TypePubComp, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := Subscribe{
+		body := Subscribe{
 			hdr:       &Header{Type: TypeSubscribe, Qos: Qos1},
 			MessageId: 12345,
 			Topics:    []TopicQos{{"topic1", Qos1}, {"topic2", Qos2}}}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := SubAck{
+		body := SubAck{
 			hdr:       &Header{Type: TypeSubAck, Qos: Qos1},
 			MessageId: 12345,
 			TopicsQos: []QosLevel{Qos1, Qos2}}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := Unsubscribe{
+		body := Unsubscribe{
 			hdr:        &Header{Type: TypeUnsubscribe, Qos: Qos1},
 			MessageId:  12345,
 			TopicsName: []string{"topic1", "topic2"}}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := UnsubAck{
+		body := UnsubAck{
 			hdr:       &Header{Type: TypeUnsubAck, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, &message, message.hdr, generalcb)
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := PingReq{&Header{Type: TypePingReq, Qos: Qos1}}
-		testNormal(t, &message, message.hdr, generalcb)
+		body := PingReq{&Header{Type: TypePingReq, Qos: Qos1}}
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := PingResp{&Header{Type: TypePingResp, Qos: Qos1}}
-		testNormal(t, &message, message.hdr, generalcb)
+		body := PingResp{&Header{Type: TypePingResp, Qos: Qos1}}
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 	{
-		message := Disconnect{&Header{Type: TypeDisconnect, Qos: Qos1}}
-		testNormal(t, &message, message.hdr, generalcb)
+		body := Disconnect{&Header{Type: TypeDisconnect, Qos: Qos1}}
+		testNormal(t, Message{body.hdr, &body}, generalcb)
 	}
 }
