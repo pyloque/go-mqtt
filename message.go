@@ -725,13 +725,6 @@ func NewMQTTReader(r io.Reader) *MQTT {
 }
 
 func (mqtt *MQTT) ReadLoop(handler func(hdr *Header, message Message, err error) bool) {
-	/***
-		mqtt.ReadLoop(func(hdr *Header, message Message, err error) {
-			if err == nil {
-				fmt.Println(hdr.Type)
-			}
-		})
-	***/
 	for {
 		hdr := new(Header)
 		if err := hdr.Decode(mqtt.r); err != nil {
@@ -755,15 +748,6 @@ func (mqtt *MQTT) ReadLoop(handler func(hdr *Header, message Message, err error)
 }
 
 func (mqtt *MQTT) ReadIter() func() (*Header, Message, error) {
-	/***
-		it := ReadIter(r)
-		for {
-			if hdr, message, err := it(); err != nil {
-				break
-			}
-			fmt.Println(hdr.Type)
-		}
-	***/
 	return func() (*Header, Message, error) {
 		hdr := new(Header)
 		if err := hdr.Decode(mqtt.r); err != nil {

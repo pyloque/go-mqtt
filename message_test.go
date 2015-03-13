@@ -2,7 +2,6 @@ package mqtt
 
 import (
 	"bytes"
-	"fmt"
 	"reflect"
 	"testing"
 )
@@ -44,8 +43,6 @@ func TestPack(t *testing.T) {
 			}
 			fi := v.Field(i).Interface()
 			rfi := rv.Field(i).Interface()
-			fmt.Println(fi)
-			fmt.Println(rfi)
 			if !reflect.DeepEqual(fi, rfi) {
 				t.Errorf("%s mismatch", it.Field(i).Name)
 				return
