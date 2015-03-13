@@ -1,4 +1,4 @@
-package mqtt
+package codec
 
 import (
 	"bytes"
@@ -104,8 +104,8 @@ type MessageBody interface {
 }
 
 type Message struct {
-	hdr  *Header
-	body MessageBody
+	Hdr  *Header
+	Body MessageBody
 }
 
 func (self *Header) Encode(buffer *bytes.Buffer) {
@@ -142,7 +142,7 @@ func (self *Header) Decode(r io.Reader) (err error) {
 }
 
 type Connect struct {
-	hdr             *Header
+	Hdr             *Header
 	ProtocolName    string
 	ProtocolVersion uint8
 	UsernameFlag    bool
@@ -160,8 +160,8 @@ type Connect struct {
 }
 
 func (self *Connect) Encode(buffer *bytes.Buffer) {
-	writeString(buffer, self.ProtocolName, self.hdr)
-	writeUint8(buffer, self.ProtocolVersion, self.hdr)
+	writeString(buffer, self.ProtocolName, self.Hdr)
+	writeUint8(buffer, self.ProtocolVersion, self.Hdr)
 	usernameFlag := IfInt(self.UsernameFlag, 1<<7, 0)
 	passwordFlag := IfInt(self.PasswordFlag, 1<<6, 0)
 	willRetain := IfInt(self.WillRetain, 1<<5, 0)
@@ -169,18 +169,18 @@ func (self *Connect) Encode(buffer *bytes.Buffer) {
 	willFlag := IfInt(self.WillFlag, 1<<2, 0)
 	cleanSession := IfInt(self.CleanSession, 1<<1, 0)
 	flags := usernameFlag | passwordFlag | willRetain | willQos | willFlag | cleanSession
-	writeUint8(buffer, uint8(flags), self.hdr)
-	writeUint16(buffer, self.KeepAliveTimer, self.hdr)
-	writeString(buffer, self.ClientId, self.hdr)
+	writeUint8(buffer, uint8(flags), self.Hdr)
+	writeUint16(buffer, self.KeepAliveTimer, self.Hdr)
+	writeString(buffer, self.ClientId, self.Hdr)
 	if self.WillFlag {
-		writeString(buffer, self.WillTopic, self.hdr)
-		writeString(buffer, self.WillMessage, self.hdr)
+		writeString(buffer, self.WillTopic, self.Hdr)
+		writeString(buffer, self.WillMessage, self.Hdr)
 	}
 	if self.UsernameFlag {
-		writeString(buffer, self.Username, self.hdr)
+		writeString(buffer, self.Username, self.Hdr)
 	}
 	if self.PasswordFlag {
-		writeString(buffer, self.Password, self.hdr)
+		writeString(buffer, self.Password, self.Hdr)
 	}
 }
 
@@ -190,13 +190,13 @@ func (self *Connect) Decode(r io.Reader) (err error) {
 	var flags uint8
 	var clientId string
 	var keepAliveTimer uint16
-	if protocolName, err = readString(r, self.hdr); err != nil {
+	if protocolName, err = readString(r, self.Hdr); err != nil {
 		return err
 	}
-	if protocolVersion, err = readUint8(r, self.hdr); err != nil {
+	if protocolVersion, err = readUint8(r, self.Hdr); err != nil {
 		return err
 	}
-	if flags, err = readUint8(r, self.hdr); err != nil {
+	if flags, err = readUint8(r, self.Hdr); err != nil {
 		return err
 	}
 	usernameFlag := b2bool(flags & 0x80)
@@ -205,10 +205,10 @@ func (self *Connect) Decode(r io.Reader) (err error) {
 	willQos := b2bool(flags & 0x18)
 	willFlag := b2bool(flags & 0x04)
 	cleanSession := b2bool(flags & 0x02)
-	if keepAliveTimer, err = readUint16(r, self.hdr); err != nil {
+	if keepAliveTimer, err = readUint16(r, self.Hdr); err != nil {
 		return err
 	}
-	if clientId, err = readString(r, self.hdr); err != nil {
+	if clientId, err = readString(r, self.Hdr); err != nil {
 		return err
 	}
 	if len(clientId) == 0 || len(clientId) >= 24 {
@@ -216,20 +216,20 @@ func (self *Connect) Decode(r io.Reader) (err error) {
 	}
 	var willTopic, willMessage, username, password string
 	if willFlag {
-		if willTopic, err = readString(r, self.hdr); err != nil {
+		if willTopic, err = readString(r, self.Hdr); err != nil {
 			return err
 		}
-		if willMessage, err = readString(r, self.hdr); err != nil {
+		if willMessage, err = readString(r, self.Hdr); err != nil {
 			return err
 		}
 	}
 	if usernameFlag {
-		if username, err = readString(r, self.hdr); err != nil {
+		if username, err = readString(r, self.Hdr); err != nil {
 			return err
 		}
 	}
 	if passwordFlag {
-		if password, err = readString(r, self.hdr); err != nil {
+		if password, err = readString(r, self.Hdr); err != nil {
 			return err
 		}
 	}
@@ -251,22 +251,22 @@ func (self *Connect) Decode(r io.Reader) (err error) {
 }
 
 type ConnAck struct {
-	hdr        *Header
+	Hdr        *Header
 	ReturnCode ReturnCode
 }
 
 func (self *ConnAck) Encode(buffer *bytes.Buffer) {
-	writeUint8(buffer, uint8(0), self.hdr)
-	writeUint8(buffer, uint8(self.ReturnCode), self.hdr)
+	writeUint8(buffer, uint8(0), self.Hdr)
+	writeUint8(buffer, uint8(self.ReturnCode), self.Hdr)
 }
 
 func (self *ConnAck) Decode(r io.Reader) (err error) {
 	// pass reserved byte
-	if _, err := readUint8(r, self.hdr); err != nil {
+	if _, err := readUint8(r, self.Hdr); err != nil {
 		return err
 	}
 	var i uint8
-	if i, err = readUint8(r, self.hdr); err != nil {
+	if i, err = readUint8(r, self.Hdr); err != nil {
 		return err
 	}
 	rc := ReturnCode(i)
@@ -278,30 +278,30 @@ func (self *ConnAck) Decode(r io.Reader) (err error) {
 }
 
 type Publish struct {
-	hdr       *Header
+	Hdr       *Header
 	MessageId uint16
 	TopicName string
 	Content   string
 }
 
 func (self *Publish) Encode(buffer *bytes.Buffer) {
-	writeString(buffer, self.TopicName, self.hdr)
-	writeUint16(buffer, self.MessageId, self.hdr)
-	writeString(buffer, self.Content, self.hdr)
+	writeString(buffer, self.TopicName, self.Hdr)
+	writeUint16(buffer, self.MessageId, self.Hdr)
+	writeString(buffer, self.Content, self.Hdr)
 }
 
 func (self *Publish) Decode(r io.Reader) (err error) {
 	var topicName, content string
 	var messageId uint16
-	if topicName, err = readString(r, self.hdr); err != nil {
+	if topicName, err = readString(r, self.Hdr); err != nil {
 		return err
 	}
-	if self.hdr.Qos.HasId() {
-		if messageId, err = readUint16(r, self.hdr); err != nil {
+	if self.Hdr.Qos.HasId() {
+		if messageId, err = readUint16(r, self.Hdr); err != nil {
 			return err
 		}
 	}
-	if content, err = readString(r, self.hdr); err != nil {
+	if content, err = readString(r, self.Hdr); err != nil {
 		return err
 	}
 	self.TopicName = topicName
@@ -311,17 +311,17 @@ func (self *Publish) Decode(r io.Reader) (err error) {
 }
 
 type PubAck struct {
-	hdr       *Header
+	Hdr       *Header
 	MessageId uint16
 }
 
 func (self *PubAck) Encode(buffer *bytes.Buffer) {
-	writeUint16(buffer, self.MessageId, self.hdr)
+	writeUint16(buffer, self.MessageId, self.Hdr)
 }
 
 func (self *PubAck) Decode(r io.Reader) (err error) {
-	if self.hdr.Qos.HasId() {
-		if self.MessageId, err = readUint16(r, self.hdr); err != nil {
+	if self.Hdr.Qos.HasId() {
+		if self.MessageId, err = readUint16(r, self.Hdr); err != nil {
 			return err
 		}
 	}
@@ -329,17 +329,17 @@ func (self *PubAck) Decode(r io.Reader) (err error) {
 }
 
 type PubRec struct {
-	hdr       *Header
+	Hdr       *Header
 	MessageId uint16
 }
 
 func (self *PubRec) Encode(buffer *bytes.Buffer) {
-	writeUint16(buffer, self.MessageId, self.hdr)
+	writeUint16(buffer, self.MessageId, self.Hdr)
 }
 
 func (self *PubRec) Decode(r io.Reader) (err error) {
-	if self.hdr.Qos.HasId() {
-		if self.MessageId, err = readUint16(r, self.hdr); err != nil {
+	if self.Hdr.Qos.HasId() {
+		if self.MessageId, err = readUint16(r, self.Hdr); err != nil {
 			return err
 		}
 	}
@@ -347,17 +347,17 @@ func (self *PubRec) Decode(r io.Reader) (err error) {
 }
 
 type PubRel struct {
-	hdr       *Header
+	Hdr       *Header
 	MessageId uint16
 }
 
 func (self *PubRel) Encode(buffer *bytes.Buffer) {
-	writeUint16(buffer, self.MessageId, self.hdr)
+	writeUint16(buffer, self.MessageId, self.Hdr)
 }
 
 func (self *PubRel) Decode(r io.Reader) (err error) {
-	if self.hdr.Qos.HasId() {
-		if self.MessageId, err = readUint16(r, self.hdr); err != nil {
+	if self.Hdr.Qos.HasId() {
+		if self.MessageId, err = readUint16(r, self.Hdr); err != nil {
 			return err
 		}
 	}
@@ -365,17 +365,17 @@ func (self *PubRel) Decode(r io.Reader) (err error) {
 }
 
 type PubComp struct {
-	hdr       *Header
+	Hdr       *Header
 	MessageId uint16
 }
 
 func (self *PubComp) Encode(buffer *bytes.Buffer) {
-	writeUint16(buffer, self.MessageId, self.hdr)
+	writeUint16(buffer, self.MessageId, self.Hdr)
 }
 
 func (self *PubComp) Decode(r io.Reader) (err error) {
-	if self.hdr.Qos.HasId() {
-		if self.MessageId, err = readUint16(r, self.hdr); err != nil {
+	if self.Hdr.Qos.HasId() {
+		if self.MessageId, err = readUint16(r, self.Hdr); err != nil {
 			return err
 		}
 	}
@@ -388,36 +388,36 @@ type TopicQos struct {
 }
 
 type Subscribe struct {
-	hdr       *Header
+	Hdr       *Header
 	MessageId uint16
 	Topics    []TopicQos
 }
 
 func (self *Subscribe) Encode(buffer *bytes.Buffer) {
-	writeUint16(buffer, self.MessageId, self.hdr)
+	writeUint16(buffer, self.MessageId, self.Hdr)
 	for _, topic := range self.Topics {
-		writeString(buffer, topic.Name, self.hdr)
-		writeUint8(buffer, uint8(topic.Qos), self.hdr)
+		writeString(buffer, topic.Name, self.Hdr)
+		writeUint8(buffer, uint8(topic.Qos), self.Hdr)
 	}
 }
 
 func (self *Subscribe) Decode(r io.Reader) (err error) {
-	if self.hdr.Qos.HasId() {
-		if self.MessageId, err = readUint16(r, self.hdr); err != nil {
+	if self.Hdr.Qos.HasId() {
+		if self.MessageId, err = readUint16(r, self.Hdr); err != nil {
 			return err
 		}
 	}
 	topics := make([]TopicQos, 0)
 	for {
-		if self.hdr.RLength == 0 {
+		if self.Hdr.RLength == 0 {
 			break
 		}
 		var topicName string
 		var qos uint8
-		if topicName, err = readString(r, self.hdr); err != nil {
+		if topicName, err = readString(r, self.Hdr); err != nil {
 			return err
 		}
-		if qos, err = readUint8(r, self.hdr); err != nil {
+		if qos, err = readUint8(r, self.Hdr); err != nil {
 			return err
 		}
 		topics = append(topics, TopicQos{topicName, QosLevel(qos)})
@@ -430,31 +430,31 @@ func (self *Subscribe) Decode(r io.Reader) (err error) {
 }
 
 type SubAck struct {
-	hdr       *Header
+	Hdr       *Header
 	MessageId uint16
 	TopicsQos []QosLevel
 }
 
 func (self *SubAck) Encode(buffer *bytes.Buffer) {
-	writeUint16(buffer, self.MessageId, self.hdr)
+	writeUint16(buffer, self.MessageId, self.Hdr)
 	for _, qos := range self.TopicsQos {
-		writeUint8(buffer, uint8(qos), self.hdr)
+		writeUint8(buffer, uint8(qos), self.Hdr)
 	}
 }
 
 func (self *SubAck) Decode(r io.Reader) (err error) {
-	if self.hdr.Qos.HasId() {
-		if self.MessageId, err = readUint16(r, self.hdr); err != nil {
+	if self.Hdr.Qos.HasId() {
+		if self.MessageId, err = readUint16(r, self.Hdr); err != nil {
 			return err
 		}
 	}
 	topicsQos := make([]QosLevel, 0)
 	var qos uint8
 	for {
-		if self.hdr.RLength == 0 {
+		if self.Hdr.RLength == 0 {
 			break
 		}
-		if qos, err = readUint8(r, self.hdr); err != nil {
+		if qos, err = readUint8(r, self.Hdr); err != nil {
 			return err
 		}
 		topicsQos = append(topicsQos, QosLevel(qos))
@@ -467,31 +467,31 @@ func (self *SubAck) Decode(r io.Reader) (err error) {
 }
 
 type Unsubscribe struct {
-	hdr        *Header
+	Hdr        *Header
 	MessageId  uint16
 	TopicsName []string
 }
 
 func (self *Unsubscribe) Encode(buffer *bytes.Buffer) {
-	writeUint16(buffer, self.MessageId, self.hdr)
+	writeUint16(buffer, self.MessageId, self.Hdr)
 	for _, topicName := range self.TopicsName {
-		writeString(buffer, topicName, self.hdr)
+		writeString(buffer, topicName, self.Hdr)
 	}
 }
 
 func (self *Unsubscribe) Decode(r io.Reader) (err error) {
-	if self.hdr.Qos.HasId() {
-		if self.MessageId, err = readUint16(r, self.hdr); err != nil {
+	if self.Hdr.Qos.HasId() {
+		if self.MessageId, err = readUint16(r, self.Hdr); err != nil {
 			return err
 		}
 	}
 	topicsName := make([]string, 0)
 	for {
-		if self.hdr.RLength == 0 {
+		if self.Hdr.RLength == 0 {
 			break
 		}
 		var topicName string
-		if topicName, err = readString(r, self.hdr); err != nil {
+		if topicName, err = readString(r, self.Hdr); err != nil {
 			return err
 		}
 		topicsName = append(topicsName, topicName)
@@ -504,17 +504,17 @@ func (self *Unsubscribe) Decode(r io.Reader) (err error) {
 }
 
 type UnsubAck struct {
-	hdr       *Header
+	Hdr       *Header
 	MessageId uint16
 }
 
 func (self *UnsubAck) Encode(buffer *bytes.Buffer) {
-	writeUint16(buffer, self.MessageId, self.hdr)
+	writeUint16(buffer, self.MessageId, self.Hdr)
 }
 
 func (self *UnsubAck) Decode(r io.Reader) (err error) {
-	if self.hdr.Qos.HasId() {
-		if self.MessageId, err = readUint16(r, self.hdr); err != nil {
+	if self.Hdr.Qos.HasId() {
+		if self.MessageId, err = readUint16(r, self.Hdr); err != nil {
 			return err
 		}
 	}
@@ -522,7 +522,7 @@ func (self *UnsubAck) Decode(r io.Reader) (err error) {
 }
 
 type PingReq struct {
-	hdr *Header
+	Hdr *Header
 }
 
 func (self *PingReq) Encode(buffer *bytes.Buffer) {
@@ -534,7 +534,7 @@ func (self *PingReq) Decode(r io.Reader) error {
 }
 
 type PingResp struct {
-	hdr *Header
+	Hdr *Header
 }
 
 func (self *PingResp) Encode(buffer *bytes.Buffer) {
@@ -546,7 +546,7 @@ func (self *PingResp) Decode(r io.Reader) error {
 }
 
 type Disconnect struct {
-	hdr *Header
+	Hdr *Header
 }
 
 func (self *Disconnect) Encode(buffer *bytes.Buffer) {
@@ -561,59 +561,59 @@ func NewMessageBody(hdr *Header) MessageBody {
 	switch hdr.Type {
 	case TypeConnect:
 		mb := new(Connect)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypeConnAck:
 		mb := new(ConnAck)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypePublish:
 		mb := new(Publish)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypePubAck:
 		mb := new(PubAck)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypePubRec:
 		mb := new(PubRec)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypePubRel:
 		mb := new(PubRel)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypePubComp:
 		mb := new(PubComp)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypeSubscribe:
 		mb := new(Subscribe)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypeSubAck:
 		mb := new(SubAck)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypeUnsubscribe:
 		mb := new(Unsubscribe)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypeUnsubAck:
 		mb := new(UnsubAck)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypePingReq:
 		mb := new(PingReq)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypePingResp:
 		mb := new(PingResp)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	case TypeDisconnect:
 		mb := new(Disconnect)
-		mb.hdr = hdr
+		mb.Hdr = hdr
 		return mb
 	}
 	return nil
@@ -770,7 +770,7 @@ func (self *MQTT) ReadIter() func() (Message, error) {
 }
 
 func (self *MQTT) Write(message Message) error {
-	hdr, body := message.hdr, message.body
+	hdr, body := message.Hdr, message.Body
 	mbuffer := bytes.NewBuffer(make([]byte, 0))
 	body.Encode(mbuffer)
 	hdr.TLength = hdr.RLength

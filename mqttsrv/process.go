@@ -1,8 +1,10 @@
-package mqtt
+package main
 
 import (
 	"log"
 	"net"
+
+	"github.com/pyloque/mqtt/codec"
 )
 
 func (room *Room) Kick() {
@@ -24,9 +26,9 @@ func (room *Room) Kick() {
 	}
 }
 
-func (room *Room) Handle(clientId string, conn net.Conn, message Message) {
+func (room *Room) Handle(clientId string, conn net.Conn, message codec.Message) {
 	log.Println(clientId, message)
-	if message.hdr.Type == TypeDisconnect {
+	if message.Hdr.Type == codec.TypeDisconnect {
 		conn.Close()
 	}
 }

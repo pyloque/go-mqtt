@@ -1,4 +1,4 @@
-package mqtt
+package codec
 
 import (
 	"bytes"
@@ -13,13 +13,13 @@ func testNormal(
 	mqtt_w := NewMQTTWriter(buffer)
 	mqtt_w.Write(message)
 	mqtt_r := NewMQTTReader(buffer)
-	hdr, body := message.hdr, message.body
+	hdr, body := message.Hdr, message.Body
 	mqtt_r.ReadLoop(func(rmessage Message, err error) bool {
 		if err != nil {
 			t.Error(err.Error())
 			return true
 		}
-		rhdr, rbody := rmessage.hdr, rmessage.body
+		rhdr, rbody := rmessage.Hdr, rmessage.Body
 		if hdr.Type != rhdr.Type || hdr.Qos != rhdr.Qos || hdr.Dup != rhdr.Dup {
 			t.Error("Header mismatch")
 			return true
@@ -53,7 +53,7 @@ func TestPack(t *testing.T) {
 	}
 	{
 		body := Connect{
-			hdr:             &Header{Type: TypeConnect, Qos: Qos1},
+			Hdr:             &Header{Type: TypeConnect, Qos: Qos1},
 			ProtocolName:    "MQIsdp",
 			ProtocolVersion: 3,
 			UsernameFlag:    true,
@@ -68,81 +68,81 @@ func TestPack(t *testing.T) {
 			WillMessage:     "testmessage",
 			Username:        "testuser",
 			Password:        "testpassword"}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := ConnAck{&Header{Type: TypeConnAck, Qos: Qos1}, ProtocolError}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := Publish{
-			hdr:       &Header{Type: TypePublish, Qos: Qos1},
+			Hdr:       &Header{Type: TypePublish, Qos: Qos1},
 			MessageId: 12345,
 			TopicName: "testtopic",
 			Content:   "abcdefghijklmnopqrstuvwxyz"}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := PubAck{
-			hdr:       &Header{Type: TypePubAck, Qos: Qos1},
+			Hdr:       &Header{Type: TypePubAck, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := PubRec{
-			hdr:       &Header{Type: TypePubRec, Qos: Qos1},
+			Hdr:       &Header{Type: TypePubRec, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := PubRel{
-			hdr:       &Header{Type: TypePubRel, Qos: Qos1},
+			Hdr:       &Header{Type: TypePubRel, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := PubComp{
-			hdr:       &Header{Type: TypePubComp, Qos: Qos1},
+			Hdr:       &Header{Type: TypePubComp, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := Subscribe{
-			hdr:       &Header{Type: TypeSubscribe, Qos: Qos1},
+			Hdr:       &Header{Type: TypeSubscribe, Qos: Qos1},
 			MessageId: 12345,
 			Topics:    []TopicQos{{"topic1", Qos1}, {"topic2", Qos2}}}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := SubAck{
-			hdr:       &Header{Type: TypeSubAck, Qos: Qos1},
+			Hdr:       &Header{Type: TypeSubAck, Qos: Qos1},
 			MessageId: 12345,
 			TopicsQos: []QosLevel{Qos1, Qos2}}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := Unsubscribe{
-			hdr:        &Header{Type: TypeUnsubscribe, Qos: Qos1},
+			Hdr:        &Header{Type: TypeUnsubscribe, Qos: Qos1},
 			MessageId:  12345,
 			TopicsName: []string{"topic1", "topic2"}}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := UnsubAck{
-			hdr:       &Header{Type: TypeUnsubAck, Qos: Qos1},
+			Hdr:       &Header{Type: TypeUnsubAck, Qos: Qos1},
 			MessageId: 12345}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := PingReq{&Header{Type: TypePingReq, Qos: Qos1}}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := PingResp{&Header{Type: TypePingResp, Qos: Qos1}}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 	{
 		body := Disconnect{&Header{Type: TypeDisconnect, Qos: Qos1}}
-		testNormal(t, Message{body.hdr, &body}, generalcb)
+		testNormal(t, Message{body.Hdr, &body}, generalcb)
 	}
 }

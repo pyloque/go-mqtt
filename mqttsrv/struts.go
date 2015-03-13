@@ -1,8 +1,10 @@
-package mqtt
+package main
 
 import (
 	"hash/adler32"
 	"net"
+
+	"github.com/pyloque/mqtt/codec"
 )
 
 var DefaultRoomKey = "default_room"
@@ -88,7 +90,7 @@ type ConnectionState struct {
 type ChannelMessage struct {
 	ClientId string
 	Conn     net.Conn
-	Message  Message
+	Message  codec.Message
 }
 
 func NewConnection(conn net.Conn) *Connection {

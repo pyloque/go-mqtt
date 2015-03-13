@@ -1,9 +1,11 @@
-package mqtt
+package main
 
 import (
 	"bufio"
 	"log"
 	"net"
+
+	"github.com/pyloque/mqtt/codec"
 )
 
 func Start(protocol string, addr string) {
@@ -28,18 +30,18 @@ func Start(protocol string, addr string) {
 func Service(conn net.Conn) {
 	defer conn.Close()
 	room := GetDistrict().SelectRoom(DefaultRoomKey)
-	mqtt := NewMQTTReader(bufio.NewReader(conn))
+	mqtt := codec.NewMQTTReader(bufio.NewReader(conn))
 	suck := mqtt.ReadIter()
 	message, err := suck()
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	if message.hdr.Type != TypeConnect {
+	if message.Hdr.Type != codec.TypeConnect {
 		log.Println("first message must be a Connect type")
 		return
 	}
-	clientId := message.body.(*Connect).ClientId
+	clientId := message.Body.(*codec.Connect).ClientId
 	room.Inbox <- ChannelMessage{clientId, conn, message}
 	room.Kick()
 	for {
